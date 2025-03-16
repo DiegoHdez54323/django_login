@@ -1,0 +1,158 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="Página de usuarios registrados">
+        <meta name="keywords" content="usuarios, registrados, administración">
+        <title>Usuarios Registrados</title>
+        <link href="{% static 'css/output.css' %}" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50 text-gray-800 flex flex-col items-center min-h-screen p-6">
+        <!-- Navbar -->
+        <header class="w-full max-w-5xl bg-white shadow-md rounded-lg py-4 px-6 mb-6 flex justify-between items-center">
+            <h1 class="text-xl font-semibold tracking-wide">Usuarios Registrados</h1>
+            <div class="flex gap-4">
+                <button id="addUserBtn"
+                        class="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition">
+                    Añadir Usuario
+                </button>
+                <a href="{% url 'logout' %}"
+                   class="px-4 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-500 transition">
+                    Cerrar sesión
+                </a>
+            </div>
+        </header>
+        <!-- Contenedor de la tabla -->
+        <div class="w-full max-w-5xl bg-white shadow-lg rounded-lg p-6">
+            {% if usuarios %}
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 border-b">
+                                <th class="py-4 px-6 text-left font-medium uppercase text-sm tracking-wide">Nombre</th>
+                                <th class="py-4 px-6 text-left font-medium uppercase text-sm tracking-wide">Correo</th>
+                                <th class="py-4 px-6 text-left font-medium uppercase text-sm tracking-wide">Fecha de Creación</th>
+                                <th class="py-4 px-6 text-center font-medium uppercase text-sm tracking-wide">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            {% for usuario in usuarios %}
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-4 px-6">{{ usuario.nombre }}</td>
+                                    <td class="py-4 px-6">{{ usuario.correo }}</td>
+                                    <td class="py-4 px-6">{{ usuario.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                                    <td class="py-4 px-6 text-center flex gap-2 justify-center">
+                                        <button class="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 transition modifyUserBtn"
+                                                data-id="{{ usuario.id }}"
+                                                data-nombre="{{ usuario.nombre }}"
+                                                data-correo="{{ usuario.correo }}">Modificar</button>
+                                        <form action="{% url 'delete_user' usuario.id %}"
+                                              method="post"
+                                              onsubmit="return confirmDelete(event, this);">
+                                            {% csrf_token %}
+                                            <button type="submit"
+                                                    class="px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-500 transition">
+                                                Eliminar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-gray-500 text-center text-lg mt-4">No hay usuarios registrados.</p>
+            {% endif %}
+        </div>
+        <!-- Modal Modificar Usuario -->
+        <div id="editUserModal"
+             class="hidden fixed inset-0 items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                <h2 class="text-lg font-semibold mb-4">Modificar Usuario</h2>
+                <form id="editUserForm" action="{% url 'edit_user' %}" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="user_id" id="editUserId">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                        <input type="text"
+                               name="nombre"
+                               id="editUserName"
+                               required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Correo</label>
+                        <input type="email"
+                               name="correo"
+                               id="editUserEmail"
+                               required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Nueva Contraseña</label>
+                        <input type="password"
+                               name="contraseña"
+                               id="editUserPassword"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600">
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button"
+                                id="closeEditModal"
+                                class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-400 transition">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition">
+                            Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- Modal anadir nuevo usuario-->
+        <div id="userModal"
+             class="hidden fixed inset-0 items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div id="modalContent" class="bg-white p-6 rounded-lg shadow-lg w-96">
+                <h2 class="text-lg font-semibold mb-4">Añadir Nuevo Usuario</h2>
+                <form id="userForm" action="{% url 'add_user' %}" method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Nombre</label>
+                        <input type="text"
+                               name="nombre"
+                               required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Correo</label>
+                        <input type="email"
+                               name="correo"
+                               required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Contraseña</label>
+                        <input type="password"
+                               name="contraseña"
+                               required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-600">
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button"
+                                id="closeModal"
+                                class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-400">Cancelar</button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script src="{% static 'js/flowbite.min.js' %}"></script>
+        <script src="{% static 'js/modal.js' %}"></script>
+        <script src="{% static 'js/delete.js' %}"></script>
+        <script src="{% static 'js/edit.js' %}"></script>
+    </body>
+</html>
